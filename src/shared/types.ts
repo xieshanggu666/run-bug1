@@ -58,6 +58,19 @@ export interface ExportResult {
   ok: boolean
   path?: string
   error?: string
+  /** 用户在系统对话框中取消 */
+  canceled?: boolean
+}
+
+/** 导入文件（打开对话框 + 读取文本）的结果 */
+export interface ImportFileResult {
+  ok: boolean
+  canceled?: boolean
+  /** 文件名（不含目录） */
+  name?: string
+  /** 文件文本内容 */
+  text?: string
+  error?: string
 }
 
 /** preload 暴露在 window.forge 上的接口 */
@@ -66,4 +79,6 @@ export interface ForgeBridge {
   saveSnapshot(record: Omit<SnapshotRecord, 'id' | 'created_at'>): Promise<SnapshotRecord>
   deleteSnapshot(id: number): Promise<void>
   exportStoryboard(dataUrl: string, defaultName: string): Promise<ExportResult>
+  exportTrajectory(json: string, defaultName: string): Promise<ExportResult>
+  importTrajectory(): Promise<ImportFileResult>
 }

@@ -74,3 +74,53 @@ export async function saveStoryboardFile(dataUrl: string, name: string): Promise
   a.click()
   return name
 }
+
+/** 导出轨迹 JSON；返回保存路径，用户取消时返回 null */
+export async function saveTrajectoryFile(json: string, name: string): Promise<string | null> {
+  const b = bridge()
+  if (b) {
+    const res = await b.exportTrajectory(json, name)
+    if (res.canceled) return null
+    if (!res.ok) throw new Error(res.error ?? '导出失败')
+    return res.path ?? ''
+  }
+  // 浏览器降级：Blob 下载
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.click()
+  URL.revokeObjectURL(url)
+  return name
+}
+
+/** 弹出文件选择并读取轨迹 JSON 文本；用户取消时返回 null */
+export async function openTrajectoryFile(): Promise<{ name: string; text: string } | null> {
+  const b = bridge()
+  if (b) {
+    const res = await b.importTrajectory()
+    if (res.canceled) return null
+    if (!res.ok) throw new Error(res.error ?? '读取文件失败')
+    return { name: res.name ?? '轨迹文件', text: res.text ?? '' }
+  }
+  // 浏览器降级：<input type="file">
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'application/json,.json'
+    input.addEventListener('change', () => {
+      const file = input.files?.[0]
+      if (!file) {
+        resolve(null)
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = () => resolve({ name: file.name, text: String(reader.result ?? '') })
+      reader.onerror = () => resolve(null)
+      reader.readAsText(file)
+    })
+    input.addEventListener('cancel', () => resolve(null))
+    input.click()
+  })
+}

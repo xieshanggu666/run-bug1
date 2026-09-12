@@ -65,6 +65,8 @@ export function Timeline(): JSX.Element {
   const playReplay = useStudio((s) => s.playReplay)
   const stopReplay = useStudio((s) => s.stopReplay)
   const resetGlass = useStudio((s) => s.resetGlass)
+  const exportTrajectory = useStudio((s) => s.exportTrajectory)
+  const importTrajectory = useStudio((s) => s.importTrajectory)
   const engine = useStudio((s) => s.engine)
   const frames = engine.traj.length
 
@@ -83,13 +85,21 @@ export function Timeline(): JSX.Element {
           ↺ 取新料重来
         </button>
       </div>
+      <div className="timeline-btns">
+        <button onClick={() => void exportTrajectory()} disabled={replaying || frames < 2}>
+          ⤓ 导出轨迹
+        </button>
+        <button onClick={() => void importTrajectory()} disabled={replaying}>
+          ⤒ 导入轨迹
+        </button>
+      </div>
       <div className="bar">
         <i style={{ width: `${(replaying ? progress : frames > 0 ? 1 : 0) * 100}%` }} />
       </div>
       <p className="muted small">
         {replaying
           ? `回放中 ${(progress * 100).toFixed(0)}%（从料泡开始逐帧复现）`
-          : `已记录 ${frames} 帧（约 ${(frames / 30).toFixed(1)} 秒操作）`}
+          : `已记录 ${frames} 帧（约 ${(frames / 30).toFixed(1)} 秒操作）· 可导出为 JSON，导入后从料泡重新回放`}
       </p>
     </div>
   )

@@ -1,15 +1,18 @@
 import { create } from 'zustand'
-import type { SimParams, SnapshotRecord, ToolId } from '@shared/types'
+import type { SimParams, SnapshotRecord, ToolId, TrajFrame } from '@shared/types'
 import {
   DEFAULT_INPUT,
   Engine,
   type GlassMetrics
 } from '../engine/engine'
 import type { GlassSnapshot } from '../engine/geometry'
+import { parseTrajectory, serializeTrajectory } from '../engine/trajectory'
 import {
   deleteSnapshot,
   listSnapshots,
-  saveSnapshot
+  openTrajectoryFile,
+  saveSnapshot,
+  saveTrajectoryFile
 } from './storage'
 
 export interface SnapshotMeta {
@@ -44,6 +47,8 @@ interface StudioState {
   playReplay: () => void
   stopReplay: () => void
   setReplayProgress: (p: number) => void
+  exportTrajectory: () => Promise<void>
+  importTrajectory: () => Promise<void>
 
   resetGlass: () => void
   showToast: (msg: string) => void
@@ -151,6 +156,50 @@ export const useStudio = create<StudioState>((set, get) => {
     },
 
     setReplayProgress: (p) => set({ replayProgress: p }),
+
+    exportTrajectory: async () => {
+      const { engine: e, showToast } = get()
+      if (e.traj.length < 2) {
+        showToast('还没有可导出的成形轨迹')
+        return
+      }
+      try {
+        const json = serializeTrajectory(e.traj)
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+        const path = await saveTrajectoryFile(json, `玻璃轨迹-${stamp}.json`)
+        if (path) showToast(`轨迹已导出：${path}`)
+      } catch (err) {
+        showToast(`导出失败：${(err as Error).message}`)
+      }
+    },
+
+    importTrajectory: async () => {
+      const { engine: e, showToast, stopReplay } = get()
+      let file: { name: string; text: string } | null
+      try {
+        file = await openTrajectoryFile()
+      } catch (err) {
+        showToast(`导入失败：${(err as Error).message}`)
+        return
+      }
+      if (!file) return
+      let frames: TrajFrame[]
+      try {
+        frames = parseTrajectory(file.text)
+      } catch (err) {
+        showToast(`导入失败：${(err as Error).message}`)
+        return
+      }
+      stopReplay()
+      e.loadTrajectory(frames)
+      set({
+        replaying: true,
+        replayProgress: 0,
+        tool: 'flame',
+        params: { ...DEFAULT_INPUT.params }
+      })
+      showToast(`已导入「${file.name}」（${frames.length} 帧），从料泡开始回放`)
+    },
 
     resetGlass: () => {
       get().engine.reset()

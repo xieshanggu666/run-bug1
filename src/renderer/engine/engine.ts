@@ -185,6 +185,16 @@ export class Engine {
     this.replayIndex = 0
   }
 
+  /**
+   * 载入外部轨迹（如导入的 JSON 文件）：回到料泡从头回放，
+   * 同时把帧序列保留为当前轨迹，回放结束后可再次回放 / 导出。
+   */
+  loadTrajectory(frames: TrajFrame[]): void {
+    this.reset()
+    this.traj = frames.slice()
+    this.startReplay(frames)
+  }
+
   cancelReplay(): void {
     this.replayFrames = null
     this.input.pressure = 0

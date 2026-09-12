@@ -7,7 +7,10 @@ const bridge: ForgeBridge = {
     ipcRenderer.invoke('pn:snapshots:save', record),
   deleteSnapshot: (id: number) => ipcRenderer.invoke('pn:snapshots:delete', id),
   exportStoryboard: (dataUrl: string, defaultName: string) =>
-    ipcRenderer.invoke('pn:storyboard:export', dataUrl, defaultName)
+    ipcRenderer.invoke('pn:storyboard:export', dataUrl, defaultName),
+  exportTrajectory: (json: string, defaultName: string) =>
+    ipcRenderer.invoke('pn:trajectory:export', json, defaultName),
+  importTrajectory: () => ipcRenderer.invoke('pn:trajectory:import')
 }
 
 contextBridge.exposeInMainWorld('forge', bridge)

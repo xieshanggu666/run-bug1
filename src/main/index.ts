@@ -1,8 +1,8 @@
 import { BrowserWindow, app, dialog, ipcMain, session } from 'electron'
-import { join } from 'node:path'
-import { writeFileSync } from 'node:fs'
+import { basename, join } from 'node:path'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { deleteSnapshot, insertSnapshot, listSnapshots, openDatabase } from './db'
-import type { ExportResult } from '../shared/types'
+import type { ExportResult, ImportFileResult } from '../shared/types'
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1440,
@@ -39,7 +39,7 @@ function registerIpc(): void {
         defaultPath: join(app.getPath('pictures'), defaultName),
         filters: [{ name: 'PNG 图片', extensions: ['png'] }]
       })
-      if (canceled || !filePath) return { ok: false, error: '已取消' }
+      if (canceled || !filePath) return { ok: false, canceled: true, error: '已取消' }
       try {
         const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
         writeFileSync(filePath, Buffer.from(base64, 'base64'))
@@ -49,6 +49,40 @@ function registerIpc(): void {
       }
     }
   )
+  ipcMain.handle(
+    'pn:trajectory:export',
+    async (_e, json: string, defaultName: string): Promise<ExportResult> => {
+      const win = BrowserWindow.getFocusedWindow() ?? undefined
+      const { canceled, filePath } = await dialog.showSaveDialog(win!, {
+        title: '导出成形轨迹',
+        defaultPath: join(app.getPath('documents'), defaultName),
+        filters: [{ name: 'JSON 轨迹', extensions: ['json'] }]
+      })
+      if (canceled || !filePath) return { ok: false, canceled: true, error: '已取消' }
+      try {
+        writeFileSync(filePath, json, 'utf8')
+        return { ok: true, path: filePath }
+      } catch (err) {
+        return { ok: false, error: (err as Error).message }
+      }
+    }
+  )
+  ipcMain.handle('pn:trajectory:import', async (): Promise<ImportFileResult> => {
+    const win = BrowserWindow.getFocusedWindow() ?? undefined
+    const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
+      title: '导入成形轨迹',
+      filters: [{ name: 'JSON 轨迹', extensions: ['json'] }],
+      properties: ['openFile']
+    })
+    if (canceled || filePaths.length === 0) return { ok: false, canceled: true }
+    const filePath = filePaths[0]
+    try {
+      const text = readFileSync(filePath, 'utf8')
+      return { ok: true, name: basename(filePath), text }
+    } catch (err) {
+      return { ok: false, error: (err as Error).message }
+    }
+  })
 }
 
 function registerCsp(): void {
