@@ -116,4 +116,69 @@ describe('轨迹文件导出 / 导入', () => {
     delete badParams.frames[2].input.params.spin
     expect(() => parseTrajectory(JSON.stringify(badParams))).toThrowError(/第 3 帧.*spin/)
   })
+
+  it('拒绝超出取值范围的数值', () => {
+    const e = new Engine()
+    recordScripted(e, 10)
+    const good = e.traj
+
+    const mutate = (fn: (frames: TrajFrame[]) => void): string => {
+      const file = JSON.parse(validFile(good)) as { frames: TrajFrame[] }
+      fn(file.frames)
+      return JSON.stringify(file)
+    }
+
+    // 火焰温度超出旋钮范围
+    expect(() =>
+      parseTrajectory(mutate((f) => { f[0].input.params.temperature = 9999 }))
+    ).toThrowError(/第 1 帧.*temperature.*超出范围/)
+    // 旋转速度为负
+    expect(() =>
+      parseTrajectory(mutate((f) => { f[1].input.params.spin = -5 }))
+    ).toThrowError(/第 2 帧.*spin.*超出范围/)
+    // 拉伸力度 > 1
+    expect(() =>
+      parseTrajectory(mutate((f) => { f[0].input.params.pullForce = 2 }))
+    ).toThrowError(/第 1 帧.*pullForce.*超出范围/)
+    // 按压强度 > 1
+    expect(() =>
+      parseTrajectory(mutate((f) => { f[0].input.pressure = 1.5 }))
+    ).toThrowError(/第 1 帧.*pressure.*超出范围/)
+    // 指针位置越界
+    expect(() =>
+      parseTrajectory(mutate((f) => { f[0].input.y = 2 }))
+    ).toThrowError(/第 1 帧.*y.*超出范围/)
+    expect(() =>
+      parseTrajectory(mutate((f) => { f[0].input.x = -3 }))
+    ).toThrowError(/第 1 帧.*x.*超出范围/)
+    // 步长过大
+    expect(() =>
+      parseTrajectory(mutate((f) => { f[0].dt = 100 }))
+    ).toThrowError(/第 1 帧.*dt.*超出范围/)
+  })
+
+  it('接受边界值（区间端点不误判）', () => {
+    const lo: TrajFrame = {
+      dt: 1 / 30,
+      input: {
+        tool: 'flame',
+        x: -1,
+        y: 0,
+        pressure: 0,
+        params: { temperature: 400, spin: 0, pullForce: 0, blowPressure: 0 }
+      }
+    }
+    const hi: TrajFrame = {
+      dt: 1 / 30,
+      input: {
+        tool: 'blow',
+        x: 1,
+        y: 1,
+        pressure: 1,
+        params: { temperature: 1200, spin: 120, pullForce: 1, blowPressure: 1 }
+      }
+    }
+    const frames = parseTrajectory(validFile([lo, hi]))
+    expect(frames).toEqual([lo, hi])
+  })
 })

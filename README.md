@@ -58,7 +58,7 @@ src/
       geometry.ts  剖面站点、温度可塑性、扩散/平滑
       tools.ts     五个工具头 + 环境步（导热、对流、淬火、退火、裂纹、气泡）
       engine.ts    固定步长引擎、轨迹录制 / 回放、成型度量
-      trajectory.ts 轨迹 JSON 导出 / 导入（严格校验，损坏时给出中文提示）
+      trajectory.ts 轨迹 JSON 导出 / 导入（逐帧校验类型与取值范围，损坏时给出中文提示）
       render.ts    Canvas 2D 回转体渲染
       storyboard.ts 分镜纯布局 + 合成
     state/         Zustand store、存储适配（SQLite / localStorage 降级）
